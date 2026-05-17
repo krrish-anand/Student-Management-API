@@ -1,12 +1,5 @@
 [
   {
-    "id": 1,
-    "name": "John Doe",
-    "email": "john@example.com",
-    "course": "Computer Science",
-    "gpa": 8.5
-  },
-  {
     "id": 2,
     "name": "Jane Smith",
     "email": "jane@example.com",
