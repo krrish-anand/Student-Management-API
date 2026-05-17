@@ -227,18 +227,46 @@ app.post('/register', (req, res) => {
 app.get('/students/:id', (req, res) => {
   const students = readStudents();
   const studentId = parseInt(req.params.id);
+
+  // Validate ID format
+  if (isNaN(studentId) || studentId < 1) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid student ID. ID must be a positive number'
+    });
+  }
+
   const student = students.find(s => s.id === studentId);
 
   if (!student) {
     return res.status(404).json({
       success: false,
-      message: `Student with ID ${studentId} not found`
+      message: `Student with ID ${studentId} not found`,
+      hint: 'Use GET /students to see all available students'
     });
   }
 
+  // Calculate additional statistics for this student
+  const courseStudents = students.filter(s => s.course === student.course);
+  const avgGpaInCourse = courseStudents.reduce((sum, s) => sum + s.gpa, 0) / courseStudents.length;
+  const overallAvgGpa = students.reduce((sum, s) => sum + s.gpa, 0) / students.length;
+
   res.json({
     success: true,
-    data: student
+    data: student,
+    statistics: {
+      courseInfo: {
+        course: student.course,
+        studentsInCourse: courseStudents.length,
+        averageGpaInCourse: avgGpaInCourse.toFixed(2),
+        studentRankInCourse: courseStudents.filter(s => s.gpa > student.gpa).length + 1
+      },
+      overallStats: {
+        totalStudents: students.length,
+        overallAverageGpa: overallAvgGpa.toFixed(2),
+        studentRankOverall: students.filter(s => s.gpa > student.gpa).length + 1
+      }
+    }
   });
 });
 
