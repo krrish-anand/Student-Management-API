@@ -6,5 +6,13 @@
     "token": "student-api-key-123",
     "createdAt": "2026-05-17T00:00:00Z",
     "active": true
+  },
+  {
+    "id": 2,
+    "clientName": "Saurav",
+    "email": "saurav@example.com",
+    "token": "sk_ba08272fca92507e5dbbc0237bde051a4630b307e503338c590da0f8867fa077",
+    "createdAt": "2026-05-17T12:00:28.569Z",
+    "active": true
   }
 ]

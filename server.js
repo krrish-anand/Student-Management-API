@@ -223,6 +223,16 @@ app.post('/students', authorizeRequest, (req, res) => {
 
   const students = readStudents();
 
+  // Check if student with same email already exists
+  const existingStudent = students.find(s => s.email === email);
+  if (existingStudent) {
+    return res.status(409).json({
+      success: false,
+      message: 'Student with this email already exists',
+      studentId: existingStudent.id
+    });
+  }
+
   // Generate new ID (maximum ID + 1)
   const newId = students.length > 0 ? Math.max(...students.map(s => s.id)) + 1 : 1;
 
@@ -377,34 +387,44 @@ app.get('/status', (req, res) => {
     students: students.length,
     registeredClients: clients.length,
     authorization: {
-      required: true,
+      required: 'Only for write operations (POST, PUT, PATCH, DELETE)',
       type: 'Bearer Token',
       header: 'Authorization',
       format: 'Bearer <token>',
-      tokenFormat: 'sk_xxxxxxxxxxxxxxxx',
-      registration: {
-        endpoint: 'POST /register',
-        description: 'Register a new API client to get a Bearer token',
-        example: {
-          url: 'http://localhost:3000/register',
-          method: 'POST',
-          body: {
-            clientName: 'My App',
-            email: 'myapp@example.com'
-          }
-        }
-      },
-      protectedEndpoints: ['POST /students', 'PUT /students/:id', 'PATCH /students/:id', 'DELETE /students/:id']
+      tokenFormat: 'sk_xxxxxxxxxxxxxxxx'
     },
     endpoints: {
-      registerClient: 'POST /register (public)',
-      getAllStudents: 'GET /students (public)',
-      getStudentById: 'GET /students/:id (public)',
-      addStudent: 'POST /students (requires Bearer token)',
-      updateStudent: 'PUT /students/:id (requires Bearer token)',
-      updateStudentName: 'PATCH /students/:id (requires Bearer token)',
-      deleteStudent: 'DELETE /students/:id (requires Bearer token)',
-      apiStatus: 'GET /status (public)'
+      public: {
+        description: 'No registration required',
+        endpoints: [
+          'GET /students (get all students)',
+          'GET /students/:id (get student by ID)',
+          'GET /status (get API status)',
+          'POST /register (register new client)'
+        ]
+      },
+      protected: {
+        description: 'Registration required - use Bearer token obtained from POST /register',
+        endpoints: [
+          'POST /students (add new student)',
+          'PUT /students/:id (update student)',
+          'PATCH /students/:id (update student name)',
+          'DELETE /students/:id (delete student)'
+        ]
+      }
+    },
+    registration: {
+      endpoint: 'POST /register',
+      description: 'Register a new API client to get a Bearer token for write operations',
+      example: {
+        url: 'http://localhost:3000/register',
+        method: 'POST',
+        body: {
+          clientName: 'My Application',
+          email: 'myapp@example.com'
+        },
+        response: 'Bearer token (use in Authorization header)'
+      }
     }
   });
 });
@@ -430,19 +450,20 @@ app.use((req, res) => {
 app.listen(PORT, () => {
   const clients = readClients();
   console.log(`\n🚀 Student Management API is running on http://localhost:${PORT}`);
-  console.log('\n📋 API Endpoints:');
-  console.log(`  POST   http://localhost:${PORT}/register (register new client)`);
+  console.log('\n� PUBLIC ENDPOINTS (No registration needed):');
   console.log(`  GET    http://localhost:${PORT}/students`);
   console.log(`  GET    http://localhost:${PORT}/students/:id`);
-  console.log(`  POST   http://localhost:${PORT}/students (requires Bearer token)`);
-  console.log(`  PUT    http://localhost:${PORT}/students/:id (requires Bearer token)`);
-  console.log(`  PATCH  http://localhost:${PORT}/students/:id (requires Bearer token)`);
-  console.log(`  DELETE http://localhost:${PORT}/students/:id (requires Bearer token)`);
   console.log(`  GET    http://localhost:${PORT}/status`);
+  console.log(`  POST   http://localhost:${PORT}/register (register new client)`);
+  console.log('\n🔒 PROTECTED ENDPOINTS (Registration required):');
+  console.log(`  POST   http://localhost:${PORT}/students (add student)`);
+  console.log(`  PUT    http://localhost:${PORT}/students/:id (update student)`);
+  console.log(`  PATCH  http://localhost:${PORT}/students/:id (update name)`);
+  console.log(`  DELETE http://localhost:${PORT}/students/:id (delete student)`);
   console.log('\n🔐 Client Registration & Authorization:');
   console.log(`  Registered Clients: ${clients.length}`);
   if (clients.length > 0) {
-    console.log(`\n  Example Token (Learning Client):`);
+    console.log(`\n  Quick Start (Learning Client):`);
     console.log(`  Authorization: Bearer ${clients[0].token}`);
   }
   console.log(`\n  To register a new client:`);

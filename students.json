@@ -11,7 +11,7 @@
     "name": "Jane Smith",
     "email": "jane@example.com",
     "course": "Information Technology",
-    "gpa": 9.0
+    "gpa": 9
   },
   {
     "id": 3,
@@ -39,7 +39,7 @@
     "name": "James Brown",
     "email": "james.brown@example.com",
     "course": "Data Science",
-    "gpa": 8.0
+    "gpa": 8
   },
   {
     "id": 7,
@@ -68,5 +68,12 @@
     "email": "liam.anderson@example.com",
     "course": "Computer Science",
     "gpa": 9.1
+  },
+  {
+    "id": 11,
+    "name": "Sukanya",
+    "email": "suku@example.com",
+    "course": "Computer Science",
+    "gpa": 8.5
   }
 ]
