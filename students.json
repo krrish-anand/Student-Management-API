@@ -1,0 +1,72 @@
+[
+  {
+    "id": 1,
+    "name": "John Doe",
+    "email": "john@example.com",
+    "course": "Computer Science",
+    "gpa": 8.5
+  },
+  {
+    "id": 2,
+    "name": "Jane Smith",
+    "email": "jane@example.com",
+    "course": "Information Technology",
+    "gpa": 9.0
+  },
+  {
+    "id": 3,
+    "name": "Mike Johnson",
+    "email": "mike@example.com",
+    "course": "Data Science",
+    "gpa": 8.2
+  },
+  {
+    "id": 4,
+    "name": "Sarah Wilson",
+    "email": "sarah.wilson@example.com",
+    "course": "Computer Science",
+    "gpa": 8.7
+  },
+  {
+    "id": 5,
+    "name": "Emma Davis",
+    "email": "emma.davis@example.com",
+    "course": "Information Technology",
+    "gpa": 9.2
+  },
+  {
+    "id": 6,
+    "name": "James Brown",
+    "email": "james.brown@example.com",
+    "course": "Data Science",
+    "gpa": 8.0
+  },
+  {
+    "id": 7,
+    "name": "Olivia Martinez",
+    "email": "olivia.martinez@example.com",
+    "course": "Computer Science",
+    "gpa": 7.9
+  },
+  {
+    "id": 8,
+    "name": "Noah Thompson",
+    "email": "noah.thompson@example.com",
+    "course": "Information Technology",
+    "gpa": 8.5
+  },
+  {
+    "id": 9,
+    "name": "Sophia Garcia",
+    "email": "sophia.garcia@example.com",
+    "course": "Data Science",
+    "gpa": 8.8
+  },
+  {
+    "id": 10,
+    "name": "Liam Anderson",
+    "email": "liam.anderson@example.com",
+    "course": "Computer Science",
+    "gpa": 9.1
+  }
+]
