@@ -2,15 +2,16 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = 3000;
 
-// API Key for authorization
-const API_KEY = 'student-api-key-123';
-
 // Path to the students.json file
 const studentsFile = path.join(__dirname, 'students.json');
+
+// Path to the clients.json file (for API client registration)
+const clientsFile = path.join(__dirname, 'clients.json');
 
 // Middleware
 app.use(bodyParser.json());
@@ -38,6 +39,33 @@ function writeStudents(students) {
   }
 }
 
+// Utility function to read clients from JSON file
+function readClients() {
+  try {
+    const data = fs.readFileSync(clientsFile, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error reading clients file:', error);
+    return [];
+  }
+}
+
+// Utility function to write clients to JSON file
+function writeClients(clients) {
+  try {
+    fs.writeFileSync(clientsFile, JSON.stringify(clients, null, 2), 'utf8');
+    return true;
+  } catch (error) {
+    console.error('Error writing clients file:', error);
+    return false;
+  }
+}
+
+// Generate a unique Bearer token
+function generateToken() {
+  return 'sk_' + crypto.randomBytes(32).toString('hex');
+}
+
 // Authorization Middleware
 function authorizeRequest(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -46,7 +74,7 @@ function authorizeRequest(req, res, next) {
     return res.status(401).json({
       success: false,
       message: 'Authorization required. Please provide Bearer token in Authorization header',
-      example: 'Authorization: Bearer student-api-key-123'
+      example: 'Authorization: Bearer <your_token>'
     });
   }
 
@@ -55,18 +83,25 @@ function authorizeRequest(req, res, next) {
     return res.status(401).json({
       success: false,
       message: 'Invalid authorization format. Use Bearer token',
-      example: 'Authorization: Bearer student-api-key-123'
+      example: 'Authorization: Bearer <your_token>'
     });
   }
 
   const token = authHeader.slice(7);
 
-  if (token !== API_KEY) {
+  // Validate token against registered clients
+  const clients = readClients();
+  const client = clients.find(c => c.token === token && c.active);
+
+  if (!client) {
     return res.status(403).json({
       success: false,
-      message: 'Invalid API key'
+      message: 'Invalid API key or client is inactive'
     });
   }
+
+  // Attach client info to request for later use
+  req.client = client;
 
   next();
 }
@@ -79,6 +114,80 @@ app.get('/students', (req, res) => {
     count: students.length,
     data: students
   });
+});
+
+// 1.5. POST /register - Register a new API client
+app.post('/register', (req, res) => {
+  const { clientName, email } = req.body;
+
+  // Validation
+  if (!clientName || !email) {
+    return res.status(400).json({
+      success: false,
+      message: 'Please provide clientName and email'
+    });
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Please provide a valid email address'
+    });
+  }
+
+  const clients = readClients();
+
+  // Check if client with same email already exists
+  const existingClient = clients.find(c => c.email === email);
+  if (existingClient) {
+    return res.status(409).json({
+      success: false,
+      message: 'Client with this email already registered',
+      clientId: existingClient.id
+    });
+  }
+
+  // Generate new client ID
+  const newClientId = clients.length > 0 ? Math.max(...clients.map(c => c.id)) + 1 : 1;
+
+  // Generate new bearer token
+  const newToken = generateToken();
+
+  const newClient = {
+    id: newClientId,
+    clientName,
+    email,
+    token: newToken,
+    createdAt: new Date().toISOString(),
+    active: true
+  };
+
+  clients.push(newClient);
+
+  if (writeClients(clients)) {
+    res.status(201).json({
+      success: true,
+      message: 'API client registered successfully',
+      client: {
+        id: newClient.id,
+        clientName: newClient.clientName,
+        email: newClient.email,
+        token: newClient.token,
+        createdAt: newClient.createdAt
+      },
+      usage: {
+        example: 'Authorization: Bearer ' + newClient.token,
+        documentation: 'Use this token in Authorization header for all protected endpoints'
+      }
+    });
+  } else {
+    res.status(500).json({
+      success: false,
+      message: 'Error registering client'
+    });
+  }
 });
 
 // 2. GET /students/:id - Get student by ID
@@ -259,29 +368,43 @@ app.delete('/students/:id', authorizeRequest, (req, res) => {
 // 6. GET /status - Get API status
 app.get('/status', (req, res) => {
   const students = readStudents();
+  const clients = readClients();
   res.json({
     success: true,
     message: 'API is running',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     students: students.length,
+    registeredClients: clients.length,
     authorization: {
       required: true,
       type: 'Bearer Token',
       header: 'Authorization',
       format: 'Bearer <token>',
-      example: 'Authorization: Bearer student-api-key-123',
-      apiKey: API_KEY,
+      tokenFormat: 'sk_xxxxxxxxxxxxxxxx',
+      registration: {
+        endpoint: 'POST /register',
+        description: 'Register a new API client to get a Bearer token',
+        example: {
+          url: 'http://localhost:3000/register',
+          method: 'POST',
+          body: {
+            clientName: 'My App',
+            email: 'myapp@example.com'
+          }
+        }
+      },
       protectedEndpoints: ['POST /students', 'PUT /students/:id', 'PATCH /students/:id', 'DELETE /students/:id']
     },
     endpoints: {
-      getAllStudents: 'GET /students',
-      getStudentById: 'GET /students/:id',
+      registerClient: 'POST /register (public)',
+      getAllStudents: 'GET /students (public)',
+      getStudentById: 'GET /students/:id (public)',
       addStudent: 'POST /students (requires Bearer token)',
       updateStudent: 'PUT /students/:id (requires Bearer token)',
       updateStudentName: 'PATCH /students/:id (requires Bearer token)',
       deleteStudent: 'DELETE /students/:id (requires Bearer token)',
-      apiStatus: 'GET /status'
+      apiStatus: 'GET /status (public)'
     }
   });
 });
@@ -305,8 +428,10 @@ app.use((req, res) => {
 
 // Start server
 app.listen(PORT, () => {
+  const clients = readClients();
   console.log(`\n🚀 Student Management API is running on http://localhost:${PORT}`);
   console.log('\n📋 API Endpoints:');
+  console.log(`  POST   http://localhost:${PORT}/register (register new client)`);
   console.log(`  GET    http://localhost:${PORT}/students`);
   console.log(`  GET    http://localhost:${PORT}/students/:id`);
   console.log(`  POST   http://localhost:${PORT}/students (requires Bearer token)`);
@@ -314,8 +439,14 @@ app.listen(PORT, () => {
   console.log(`  PATCH  http://localhost:${PORT}/students/:id (requires Bearer token)`);
   console.log(`  DELETE http://localhost:${PORT}/students/:id (requires Bearer token)`);
   console.log(`  GET    http://localhost:${PORT}/status`);
-  console.log('\n🔐 Authorization (Bearer Token):');
-  console.log(`  API Key: ${API_KEY}`);
-  console.log(`  Format: Authorization: Bearer ${API_KEY}`);
+  console.log('\n🔐 Client Registration & Authorization:');
+  console.log(`  Registered Clients: ${clients.length}`);
+  if (clients.length > 0) {
+    console.log(`\n  Example Token (Learning Client):`);
+    console.log(`  Authorization: Bearer ${clients[0].token}`);
+  }
+  console.log(`\n  To register a new client:`);
+  console.log(`  POST http://localhost:${PORT}/register`);
+  console.log(`  Body: { "clientName": "My App", "email": "myapp@example.com" }`);
   console.log('\n');
 });

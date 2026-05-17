@@ -1,0 +1,10 @@
+[
+  {
+    "id": 1,
+    "clientName": "Learning Client",
+    "email": "learn@example.com",
+    "token": "student-api-key-123",
+    "createdAt": "2026-05-17T00:00:00Z",
+    "active": true
+  }
+]
