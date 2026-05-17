@@ -6,6 +6,9 @@ const path = require('path');
 const app = express();
 const PORT = 3000;
 
+// API Key for authorization
+const API_KEY = 'student-api-key-123';
+
 // Path to the students.json file
 const studentsFile = path.join(__dirname, 'students.json');
 
@@ -33,6 +36,39 @@ function writeStudents(students) {
     console.error('Error writing students file:', error);
     return false;
   }
+}
+
+// Authorization Middleware
+function authorizeRequest(req, res, next) {
+  const authHeader = req.headers['authorization'];
+
+  if (!authHeader) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authorization required. Please provide Bearer token in Authorization header',
+      example: 'Authorization: Bearer student-api-key-123'
+    });
+  }
+
+  // Extract token from "Bearer token"
+  if (!authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid authorization format. Use Bearer token',
+      example: 'Authorization: Bearer student-api-key-123'
+    });
+  }
+
+  const token = authHeader.slice(7);
+
+  if (token !== API_KEY) {
+    return res.status(403).json({
+      success: false,
+      message: 'Invalid API key'
+    });
+  }
+
+  next();
 }
 
 // 1. GET /students - Get all students
@@ -65,7 +101,7 @@ app.get('/students/:id', (req, res) => {
 });
 
 // 3. POST /students - Add a new student
-app.post('/students', (req, res) => {
+app.post('/students', authorizeRequest, (req, res) => {
   const { name, email, course, gpa } = req.body;
 
   // Validation
@@ -106,7 +142,7 @@ app.post('/students', (req, res) => {
 });
 
 // 4. PUT /students/:id - Update student
-app.put('/students/:id', (req, res) => {
+app.put('/students/:id', authorizeRequest, (req, res) => {
   const studentId = parseInt(req.params.id);
   const { name, email, course, gpa } = req.body;
 
@@ -151,8 +187,48 @@ app.put('/students/:id', (req, res) => {
   }
 });
 
+// 4.5. PATCH /students/:id - Partial update (update name only)
+app.patch('/students/:id', authorizeRequest, (req, res) => {
+  const studentId = parseInt(req.params.id);
+  const { name } = req.body;
+
+  // Validation
+  if (!name) {
+    return res.status(400).json({
+      success: false,
+      message: 'Please provide name'
+    });
+  }
+
+  const students = readStudents();
+  const studentIndex = students.findIndex(s => s.id === studentId);
+
+  if (studentIndex === -1) {
+    return res.status(404).json({
+      success: false,
+      message: `Student with ID ${studentId} not found`
+    });
+  }
+
+  // Update only the name
+  students[studentIndex].name = name;
+
+  if (writeStudents(students)) {
+    res.json({
+      success: true,
+      message: 'Student name updated successfully',
+      data: students[studentIndex]
+    });
+  } else {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating student'
+    });
+  }
+});
+
 // 5. DELETE /students/:id - Delete student
-app.delete('/students/:id', (req, res) => {
+app.delete('/students/:id', authorizeRequest, (req, res) => {
   const studentId = parseInt(req.params.id);
   const students = readStudents();
   const studentIndex = students.findIndex(s => s.id === studentId);
@@ -189,12 +265,22 @@ app.get('/status', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     students: students.length,
+    authorization: {
+      required: true,
+      type: 'Bearer Token',
+      header: 'Authorization',
+      format: 'Bearer <token>',
+      example: 'Authorization: Bearer student-api-key-123',
+      apiKey: API_KEY,
+      protectedEndpoints: ['POST /students', 'PUT /students/:id', 'PATCH /students/:id', 'DELETE /students/:id']
+    },
     endpoints: {
       getAllStudents: 'GET /students',
       getStudentById: 'GET /students/:id',
-      addStudent: 'POST /students',
-      updateStudent: 'PUT /students/:id',
-      deleteStudent: 'DELETE /students/:id',
+      addStudent: 'POST /students (requires Bearer token)',
+      updateStudent: 'PUT /students/:id (requires Bearer token)',
+      updateStudentName: 'PATCH /students/:id (requires Bearer token)',
+      deleteStudent: 'DELETE /students/:id (requires Bearer token)',
       apiStatus: 'GET /status'
     }
   });
@@ -219,12 +305,17 @@ app.use((req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Student Management API is running on http://localhost:${PORT}`);
-  console.log('API Endpoints:');
+  console.log(`\n🚀 Student Management API is running on http://localhost:${PORT}`);
+  console.log('\n📋 API Endpoints:');
   console.log(`  GET    http://localhost:${PORT}/students`);
   console.log(`  GET    http://localhost:${PORT}/students/:id`);
-  console.log(`  POST   http://localhost:${PORT}/students`);
-  console.log(`  PUT    http://localhost:${PORT}/students/:id`);
-  console.log(`  DELETE http://localhost:${PORT}/students/:id`);
+  console.log(`  POST   http://localhost:${PORT}/students (requires Bearer token)`);
+  console.log(`  PUT    http://localhost:${PORT}/students/:id (requires Bearer token)`);
+  console.log(`  PATCH  http://localhost:${PORT}/students/:id (requires Bearer token)`);
+  console.log(`  DELETE http://localhost:${PORT}/students/:id (requires Bearer token)`);
   console.log(`  GET    http://localhost:${PORT}/status`);
+  console.log('\n🔐 Authorization (Bearer Token):');
+  console.log(`  API Key: ${API_KEY}`);
+  console.log(`  Format: Authorization: Bearer ${API_KEY}`);
+  console.log('\n');
 });
