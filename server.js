@@ -180,6 +180,26 @@ app.delete('/students/:id', (req, res) => {
   }
 });
 
+// 6. GET /status - Get API status
+app.get('/status', (req, res) => {
+  const students = readStudents();
+  res.json({
+    success: true,
+    message: 'API is running',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    students: students.length,
+    endpoints: {
+      getAllStudents: 'GET /students',
+      getStudentById: 'GET /students/:id',
+      addStudent: 'POST /students',
+      updateStudent: 'PUT /students/:id',
+      deleteStudent: 'DELETE /students/:id',
+      apiStatus: 'GET /status'
+    }
+  });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -206,4 +226,5 @@ app.listen(PORT, () => {
   console.log(`  POST   http://localhost:${PORT}/students`);
   console.log(`  PUT    http://localhost:${PORT}/students/:id`);
   console.log(`  DELETE http://localhost:${PORT}/students/:id`);
+  console.log(`  GET    http://localhost:${PORT}/status`);
 });
