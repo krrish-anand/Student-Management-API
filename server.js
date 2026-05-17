@@ -106,12 +106,45 @@ function authorizeRequest(req, res, next) {
   next();
 }
 
-// 1. GET /students - Get all students
+// 1. GET /students - Get all students with optional filters
 app.get('/students', (req, res) => {
-  const students = readStudents();
+  let students = readStudents();
+  const { course, limit } = req.query;
+
+  // Filter by course if provided
+  if (course) {
+    const validCourses = ['Computer Science', 'Information Technology', 'Data Science'];
+    if (!validCourses.includes(course)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid course. Valid options: ${validCourses.join(', ')}`
+      });
+    }
+    students = students.filter(s => s.course === course);
+  }
+
+  // Apply limit if provided
+  let resultLimit = students.length;
+  if (limit) {
+    const parsedLimit = parseInt(limit);
+    if (isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 20) {
+      return res.status(400).json({
+        success: false,
+        message: 'Limit must be a number between 1 and 20'
+      });
+    }
+    resultLimit = parsedLimit;
+    students = students.slice(0, resultLimit);
+  }
+
   res.json({
     success: true,
     count: students.length,
+    totalAvailable: readStudents().length,
+    filters: {
+      course: course || 'all',
+      limit: limit || 'unlimited'
+    },
     data: students
   });
 });
