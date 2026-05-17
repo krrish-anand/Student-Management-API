@@ -106,7 +106,61 @@ function authorizeRequest(req, res, next) {
   next();
 }
 
-// 1. GET /students - Get all students with optional filters
+// 1. GET /status - Get API status
+app.get('/status', (req, res) => {
+  const students = readStudents();
+  const clients = readClients();
+  res.json({
+    success: true,
+    message: 'API is running',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    students: students.length,
+    registeredClients: clients.length,
+    authorization: {
+      required: 'Only for write operations (POST, PUT, PATCH, DELETE)',
+      type: 'Bearer Token',
+      header: 'Authorization',
+      format: 'Bearer <token>',
+      tokenFormat: 'sk_xxxxxxxxxxxxxxxx'
+    },
+    endpoints: {
+      public: {
+        description: 'No registration required',
+        endpoints: [
+          'GET /status (get API status)',
+          'GET /students (get all students)',
+          'GET /students/:id (get student by ID)',
+          'POST /register (register new client)'
+        ]
+      },
+      protected: {
+        description: 'Registration required - use Bearer token obtained from POST /register',
+        endpoints: [
+          'POST /students (add new student)',
+          'PUT /students/:id (update student)',
+          'PATCH /students/:id (update student name)',
+          'DELETE /students/:id (delete student)'
+        ]
+      }
+    },
+    registration: {
+      endpoint: 'POST /register',
+      description: 'Register a new API client to get a Bearer token for write operations',
+      example: {
+        url: 'http://localhost:3000/register',
+        method: 'POST',
+        body: {
+          clientName: 'My Application',
+          email: 'myapp@example.com'
+        },
+        response: 'Bearer token (use in Authorization header)'
+      }
+    }
+  });
+});
+
+// 2. GET /students - Get all students with optional filters
 app.get('/students', (req, res) => {
   let students = readStudents();
   const { course, limit } = req.query;
@@ -149,7 +203,54 @@ app.get('/students', (req, res) => {
   });
 });
 
-// 1.5. POST /register - Register a new API client
+// 3. GET /students/:id - Get student by ID
+app.get('/students/:id', (req, res) => {
+  const students = readStudents();
+  const studentId = parseInt(req.params.id);
+
+  // Validate ID format
+  if (isNaN(studentId) || studentId < 1) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid student ID. ID must be a positive number'
+    });
+  }
+
+  const student = students.find(s => s.id === studentId);
+
+  if (!student) {
+    return res.status(404).json({
+      success: false,
+      message: `Student with ID ${studentId} not found`,
+      hint: 'Use GET /students to see all available students'
+    });
+  }
+
+  // Calculate additional statistics for this student
+  const courseStudents = students.filter(s => s.course === student.course);
+  const avgGpaInCourse = courseStudents.reduce((sum, s) => sum + s.gpa, 0) / courseStudents.length;
+  const overallAvgGpa = students.reduce((sum, s) => sum + s.gpa, 0) / students.length;
+
+  res.json({
+    success: true,
+    data: student,
+    statistics: {
+      courseInfo: {
+        course: student.course,
+        studentsInCourse: courseStudents.length,
+        averageGpaInCourse: avgGpaInCourse.toFixed(2),
+        studentRankInCourse: courseStudents.filter(s => s.gpa > student.gpa).length + 1
+      },
+      overallStats: {
+        totalStudents: students.length,
+        overallAverageGpa: overallAvgGpa.toFixed(2),
+        studentRankOverall: students.filter(s => s.gpa > student.gpa).length + 1
+      }
+    }
+  });
+});
+
+// 4. POST /register - Register a new API client
 app.post('/register', (req, res) => {
   const { clientName, email } = req.body;
 
@@ -223,54 +324,7 @@ app.post('/register', (req, res) => {
   }
 });
 
-// 2. GET /students/:id - Get student by ID
-app.get('/students/:id', (req, res) => {
-  const students = readStudents();
-  const studentId = parseInt(req.params.id);
-
-  // Validate ID format
-  if (isNaN(studentId) || studentId < 1) {
-    return res.status(400).json({
-      success: false,
-      message: 'Invalid student ID. ID must be a positive number'
-    });
-  }
-
-  const student = students.find(s => s.id === studentId);
-
-  if (!student) {
-    return res.status(404).json({
-      success: false,
-      message: `Student with ID ${studentId} not found`,
-      hint: 'Use GET /students to see all available students'
-    });
-  }
-
-  // Calculate additional statistics for this student
-  const courseStudents = students.filter(s => s.course === student.course);
-  const avgGpaInCourse = courseStudents.reduce((sum, s) => sum + s.gpa, 0) / courseStudents.length;
-  const overallAvgGpa = students.reduce((sum, s) => sum + s.gpa, 0) / students.length;
-
-  res.json({
-    success: true,
-    data: student,
-    statistics: {
-      courseInfo: {
-        course: student.course,
-        studentsInCourse: courseStudents.length,
-        averageGpaInCourse: avgGpaInCourse.toFixed(2),
-        studentRankInCourse: courseStudents.filter(s => s.gpa > student.gpa).length + 1
-      },
-      overallStats: {
-        totalStudents: students.length,
-        overallAverageGpa: overallAvgGpa.toFixed(2),
-        studentRankOverall: students.filter(s => s.gpa > student.gpa).length + 1
-      }
-    }
-  });
-});
-
-// 3. POST /students - Add a new student
+// 5. POST /students - Add a new student
 app.post('/students', authorizeRequest, (req, res) => {
   const { name, email, course, gpa } = req.body;
 
@@ -321,7 +375,7 @@ app.post('/students', authorizeRequest, (req, res) => {
   }
 });
 
-// 4. PUT /students/:id - Update student
+// 6. PUT /students/:id - Complete Student Update
 app.put('/students/:id', authorizeRequest, (req, res) => {
   const studentId = parseInt(req.params.id);
   const { name, email, course, gpa } = req.body;
@@ -367,7 +421,7 @@ app.put('/students/:id', authorizeRequest, (req, res) => {
   }
 });
 
-// 4.5. PATCH /students/:id - Partial update (update name only)
+// 7. PATCH /students/:id - Partial Student Update
 app.patch('/students/:id', authorizeRequest, (req, res) => {
   const studentId = parseInt(req.params.id);
   const { name } = req.body;
@@ -407,7 +461,7 @@ app.patch('/students/:id', authorizeRequest, (req, res) => {
   }
 });
 
-// 5. DELETE /students/:id - Delete student
+// 8. DELETE /students/:id - Delete an Student
 app.delete('/students/:id', authorizeRequest, (req, res) => {
   const studentId = parseInt(req.params.id);
   const students = readStudents();
@@ -436,60 +490,6 @@ app.delete('/students/:id', authorizeRequest, (req, res) => {
   }
 });
 
-// 6. GET /status - Get API status
-app.get('/status', (req, res) => {
-  const students = readStudents();
-  const clients = readClients();
-  res.json({
-    success: true,
-    message: 'API is running',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    students: students.length,
-    registeredClients: clients.length,
-    authorization: {
-      required: 'Only for write operations (POST, PUT, PATCH, DELETE)',
-      type: 'Bearer Token',
-      header: 'Authorization',
-      format: 'Bearer <token>',
-      tokenFormat: 'sk_xxxxxxxxxxxxxxxx'
-    },
-    endpoints: {
-      public: {
-        description: 'No registration required',
-        endpoints: [
-          'GET /students (get all students)',
-          'GET /students/:id (get student by ID)',
-          'GET /status (get API status)',
-          'POST /register (register new client)'
-        ]
-      },
-      protected: {
-        description: 'Registration required - use Bearer token obtained from POST /register',
-        endpoints: [
-          'POST /students (add new student)',
-          'PUT /students/:id (update student)',
-          'PATCH /students/:id (update student name)',
-          'DELETE /students/:id (delete student)'
-        ]
-      }
-    },
-    registration: {
-      endpoint: 'POST /register',
-      description: 'Register a new API client to get a Bearer token for write operations',
-      example: {
-        url: 'http://localhost:3000/register',
-        method: 'POST',
-        body: {
-          clientName: 'My Application',
-          email: 'myapp@example.com'
-        },
-        response: 'Bearer token (use in Authorization header)'
-      }
-    }
-  });
-});
-
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -510,18 +510,18 @@ app.use((req, res) => {
 // Start server
 app.listen(PORT, () => {
   const clients = readClients();
-  console.log(`\n🚀 Student Management API is running on http://localhost:${PORT}`);
-  console.log('\n� PUBLIC ENDPOINTS (No registration needed):');
+  console.log(`\nStudent Management API is running on http://localhost:${PORT}`);
+  console.log('\nPUBLIC ENDPOINTS (No registration needed):');
   console.log(`  GET    http://localhost:${PORT}/students`);
   console.log(`  GET    http://localhost:${PORT}/students/:id`);
   console.log(`  GET    http://localhost:${PORT}/status`);
   console.log(`  POST   http://localhost:${PORT}/register (register new client)`);
-  console.log('\n🔒 PROTECTED ENDPOINTS (Registration required):');
+  console.log('\nPROTECTED ENDPOINTS (Registration required):');
   console.log(`  POST   http://localhost:${PORT}/students (add student)`);
   console.log(`  PUT    http://localhost:${PORT}/students/:id (update student)`);
   console.log(`  PATCH  http://localhost:${PORT}/students/:id (update name)`);
   console.log(`  DELETE http://localhost:${PORT}/students/:id (delete student)`);
-  console.log('\n🔐 Client Registration & Authorization:');
+  console.log('\nClient Registration & Authorization:');
   console.log(`  Registered Clients: ${clients.length}`);
   if (clients.length > 0) {
     console.log(`\n  Quick Start (Learning Client):`);
