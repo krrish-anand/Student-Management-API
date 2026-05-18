@@ -1,23 +1,16 @@
 # Student Management API
 
-A comprehensive RESTful API for managing student records using Node.js and Express. This project is designed for learning API development fundamentals, including RESTful principles, bearer token authentication, middleware, file I/O, and API testing with Postman.
+A comprehensive RESTful API for managing student records using Node.js and Express. This project is used for learning API development fundamentals, including RESTful principles, bearer token authentication and API testing with Postman.
 
-## 🎯 Features
+## Features
 
-- 📊 **8 RESTful Endpoints** - Get API status, read/create/update/delete students, register clients
-- 🔐 **Bearer Token Authentication** - Secure protected endpoints with token-based authorization
-- 🔍 **Advanced Filtering** - Filter students by course and limit results
-- 📈 **Student Statistics** - Automatic ranking and GPA comparisons
-- ✅ **Data Validation** - Input validation and duplicate prevention
-- 📁 **JSON File Storage** - Simple file-based database (no external DB required)
-- 🧪 **Postman Ready** - Complete documentation and workflows for API testing
-- 🎓 **Learning Focused** - Perfect for understanding API fundamentals
-
-## 📋 Prerequisites
-
-- Node.js (v14 or higher)
-- npm (Node Package Manager)
-- POSTMAN (for testing the API)
+- **8 RESTful Endpoints** - Get API status, read/create/update/delete students, register clients
+- **Bearer Token Authentication** - Secure protected endpoints with token-based authorization
+- **Advanced Filtering** - Filter students by course and limit results
+- **Student Statistics** - Automatic ranking and GPA comparisons
+- **Data Validation** - Input validation and duplicate prevention
+- **JSON File Storage** - Simple file-based database (no external DB required)
+- **Postman Ready** - Complete documentation and workflows for API testing
 
 ## 🔧 Installation
 
@@ -31,21 +24,16 @@ A comprehensive RESTful API for managing student records using Node.js and Expre
    npm install
    ```
 
-## ▶️ Running the Server
+## Running the Server
 
 ### Using npm start:
 ```bash
 npm start
 ```
 
-### Using nodemon (for development with auto-reload):
-```bash
-npm run dev
-```
+The API will be available at: `http://localhost:3000` by default if no changes in project is made.
 
-The API will be available at: `http://localhost:3000`
-
-## � API Documentation
+## API Documentation
 
 For comprehensive API documentation including all endpoints, request/response examples, and testing workflows, see **[Student-Management-API.md](./Student-Management-API.md)**.
 
@@ -55,8 +43,6 @@ The documentation includes:
 - ✅ Data models and structure
 - ✅ Error handling and status codes
 - ✅ **Complete Postman setup guide with workflows**
-- ✅ cURL examples and Postman collection JSON
-- ✅ Pro tips for API testing and automation
 
 
 ## 📁 Project Structure
@@ -72,7 +58,7 @@ Student API/
 └── .gitignore             # Git ignore file
 ```
 
-## 📝 Common Issues & Solutions
+## Common Issues & Solutions
 
 **Issue: "Authorization required" error**
 - Solution: Make sure you've registered a client and copied the Bearer token correctly
@@ -86,7 +72,7 @@ Student API/
 **Issue: Cannot read JSON files**
 - Solution: Ensure students.json and clients.json exist in the project root
 
-## 📞 Support
+## Support
 
 For issues or questions about the API, refer to the endpoint documentation above or test with POSTMAN to understand the request/response format.
 
